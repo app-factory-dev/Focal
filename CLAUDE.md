@@ -137,7 +137,8 @@ matters**: Illustrator sits before "Image" (`.ai` conforms to `public.image` and
   of an animated GIF copies its frames.
 - **Archives match exact types, never conformance**: `.docx`, `.xlsx`, `.epub`, `.pages`, `.jar`, `.ipa` conform to
   `public.zip-archive`, so conformance would put Focal in Word's Open With and "browse" its XML. Rank `Alternate`
-  (Archive Utility keeps the double-click). `.gz`/`.bz2`/`.xz` are claimed only so `.tar.gz` works; a lone `.gz` isn't
+  (Archive Utility keeps the double-click; RAR, which nothing else on the Mac opens, defaults to Focal, and the user
+  wants it that way, 2026-11-27). `.gz`/`.bz2`/`.xz` are claimed only so `.tar.gz` works; a lone `.gz` isn't
   browsed. Unpacked with `/usr/bin/tar` (lists first: over 4 GB or 10,000 entries is refused), always with a dummy
   `--passphrase` and stdin from /dev/null: without them an encrypted ZIP made bsdtar prompt for a passphrase forever.
   Shallow files are moved first so a top-level `notes.txt` keeps its name over `sub/notes.txt`.
