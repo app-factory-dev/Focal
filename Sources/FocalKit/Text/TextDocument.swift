@@ -122,6 +122,7 @@ final class TextDocument: NSDocument {
     override func prepareSavePanel(_ savePanel: NSSavePanel) -> Bool {
         savePanel.allowsOtherFileTypes = true
         savePanel.isExtensionHidden = false
+        startNextToArchive(savePanel)
         return true
     }
 

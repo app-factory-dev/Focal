@@ -17,6 +17,8 @@ exactly where you last left one), and it shows nearly everything Preview and Qui
   photo, then a PDF, then a 3D model, then a movie, in the same window.
 - **Open many files as one.** Select files in Finder and open them, or drop a folder on Focal: one window, with a
   thumbnail sidebar. The window keeps its size as you flick through, like a lightbox.
+- **Look inside archives.** Open a ZIP, 7z, RAR, tar or ISO with Focal (Open With) and browse the pictures,
+  PDFs and text inside like a folder, without unpacking it yourself. View only: edits save as new files.
 - **Fast.** About 360 ms from a cold launch to a window, about 55 ms per file once it's running. Images are
   sized from their headers and decoded off the main thread.
 - **Native.** Swift and AppKit, no Electron, no web views except for rendered Markdown, nothing running in the background.

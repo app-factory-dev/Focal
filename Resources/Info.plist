@@ -258,6 +258,35 @@
 			<key>NSDocumentClass</key>
 			<string>VideoDocument</string>
 		</dict>
+		<!-- An archive browses like a folder: its viewable files are unpacked and listed in one window (handled in
+		     FocalDocumentController before any document is made). Rank Alternate: in Open With, never the
+		     default (Archive Utility keeps the double-click). Exact types only: .docx/.epub/.jar conform to
+		     public.zip-archive. Compressed single files (.gz/.bz2/.xz) are claimed for .tar.gz and friends. -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Archive</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>org.7-zip.7-zip-archive</string>
+				<string>com.rarlab.rar-archive</string>
+				<string>public.tar-archive</string>
+				<string>org.gnu.gnu-zip-tar-archive</string>
+				<string>public.tar-bzip2-archive</string>
+				<string>org.tukaani.tar-xz-archive</string>
+				<string>org.gnu.gnu-zip-archive</string>
+				<string>public.bzip2-archive</string>
+				<string>org.tukaani.xz-archive</string>
+				<string>public.cpio-archive</string>
+				<string>public.iso-image</string>
+				<string>com.apple.xar-archive</string>
+				<string>com.microsoft.cab</string>
+			</array>
+		</dict>
 		<!-- A folder dropped on the Dock icon or picked in Open browses its files in one window (handled in
 		     FocalDocumentController before any document is made). Rank None: never the default for folders. -->
 		<dict>
@@ -269,6 +298,28 @@
 			<string>None</string>
 			<key>LSItemContentTypes</key>
 			<array><string>public.folder</string></array>
+		</dict>
+	</array>
+	<!-- macOS declares no type for RAR; this is the identifier other apps use for it. -->
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.rarlab.rar-archive</string>
+			<key>UTTypeDescription</key>
+			<string>RAR archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array><string>rar</string></array>
+				<key>public.mime-type</key>
+				<array><string>application/vnd.rar</string><string>application/x-rar-compressed</string></array>
+			</dict>
 		</dict>
 	</array>
 </dict>

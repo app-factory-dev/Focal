@@ -172,7 +172,7 @@ final class VideoViewController: NSViewController, ViewerContent, NSMenuItemVali
         let range = CMTimeRange(start: start, end: end)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = url.deletingPathExtension().lastPathComponent + " (trimmed)." + url.pathExtension
-        panel.directoryURL = url.deletingLastPathComponent()
+        panel.directoryURL = ArchiveBrowser.saveFolder(for: url)
         panel.allowedContentTypes = [UTType(filenameExtension: url.pathExtension) ?? .quickTimeMovie]
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let out = panel.url else { return }

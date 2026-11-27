@@ -23,6 +23,11 @@ final class PDFFileDocument: NSDocument {
 
     override class var autosavesInPlace: Bool { false }
 
+    override func prepareSavePanel(_ savePanel: NSSavePanel) -> Bool {
+        startNextToArchive(savePanel)
+        return super.prepareSavePanel(savePanel)
+    }
+
     override func makeWindowControllers() {
         addWindowController(ViewerWindowController())
     }
