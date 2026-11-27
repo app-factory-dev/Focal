@@ -46,6 +46,11 @@ final class FocalDocumentController: NSDocumentController {
         var batch = gathered
         gathered = []
         batch.removeAll { item in
+            guard ArchiveBrowser.isArchive(item.url) else { return false }
+            openArchive(item.url, completion: item.completion)
+            return true
+        }
+        batch.removeAll { item in
             guard let files = FolderNavigator.folderToBrowse(item.url) else { return false }
             if files.isEmpty {
                 let error = NSError(domain: NSCocoaErrorDomain, code: NSFileReadUnknownError, userInfo: [
@@ -67,6 +72,29 @@ final class FocalDocumentController: NSDocumentController {
         openSet(together, completions: batch.filter { together.contains($0.url) }.map(\.completion))
     }
 
+    /// An archive browses like a folder once its viewable files are unpacked (off the main thread; a small
+    /// "Opening…" panel shows if that takes more than a moment).
+    private func openArchive(_ url: URL, completion: @escaping OpenCompletion) {
+        let started = Date()
+        let progress = ArchiveProgressPanel(name: url.lastPathComponent)
+        Task { @MainActor in
+            let result = await Self.unpack(url)
+            progress.close()
+            Log.event(String(format: "unpacked %@ in %.1f ms", url.lastPathComponent, Date().timeIntervalSince(started) * 1000))
+            switch result {
+            case .success(let files):
+                openSet(files, completions: [completion])
+                noteNewRecentDocumentURL(url)
+            case .failure(let error):
+                completion(nil, false, error)
+            }
+        }
+    }
+
+    @concurrent private nonisolated static func unpack(_ url: URL) async -> Result<[URL], any Error> {
+        Result { try ArchiveBrowser.unpack(url) }
+    }
+
     /// One window showing the first file, the rest in its sidebar.
     private func openSet(_ files: [URL], completions: [OpenCompletion]) {
         let started = Date()
@@ -84,6 +112,13 @@ final class FocalDocumentController: NSDocumentController {
                 }
             }
         }
+    }
+
+    /// A file from an archive has no home to save back to: as a draft, Save asks where (starting next to the archive).
+    override func makeDocument(withContentsOf url: URL, ofType typeName: String) throws -> NSDocument {
+        let doc = try super.makeDocument(withContentsOf: url, ofType: typeName)
+        if ArchiveBrowser.isUnpacked(url) { doc.isDraft = true }
+        return doc
     }
 
     /// Several URLs at once (the Open panel, the app delegate): through the same gathering as Finder's opens.
@@ -141,5 +176,44 @@ final class FocalDocumentController: NSDocumentController {
         } catch {
             NSApp.presentError(error)
         }
+    }
+}
+
+/// "Opening photos.zip…" with a spinner, centered on the main display; only for unpacks that take a while.
+@MainActor
+private final class ArchiveProgressPanel {
+    private var panel: NSPanel?
+    private var closed = false
+
+    init(name: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            MainActor.assumeIsolated { self?.show(name) }
+        }
+    }
+
+    private func show(_ name: String) {
+        guard !closed, let screen = NSScreen.screens.first else { return }
+        let spinner = NSProgressIndicator()
+        spinner.style = .spinning
+        spinner.controlSize = .small
+        spinner.isDisplayedWhenStopped = false
+        spinner.startAnimation(nil)
+        let label = NSTextField(labelWithString: "Opening “\(name)”…")
+        let stack = NSStackView(views: [spinner, label])
+        stack.edgeInsets = NSEdgeInsets(top: 16, left: 20, bottom: 16, right: 20)
+        let panel = NSPanel(contentRect: .zero, styleMask: [.titled, .utilityWindow], backing: .buffered, defer: false)
+        panel.contentView = stack
+        panel.isReleasedWhenClosed = false
+        panel.setContentSize(stack.fittingSize)
+        let size = panel.frame.size
+        panel.setFrameOrigin(CGPoint(x: screen.frame.midX - size.width / 2, y: screen.visibleFrame.midY - size.height / 2))
+        panel.orderFront(nil)
+        self.panel = panel
+    }
+
+    func close() {
+        closed = true
+        panel?.close()
+        panel = nil
     }
 }

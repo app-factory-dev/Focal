@@ -305,6 +305,16 @@ final class ViewerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     func windowWillClose(_ notification: Notification) {
         rememberFrame()
         content?.teardown()
+        // An archive's unpacked copy goes with its window (after the document has let go of its file).
+        if let url = (document as? NSDocument)?.fileURL ?? fileSet?.first, let folder = ArchiveBrowser.unpackedFolder(of: url) {
+            DispatchQueue.main.async { ArchiveBrowser.remove(folder) }
+        }
+    }
+
+    /// A file from an archive: "IMG_2.jpg — photos.zip", so the window says where it came from.
+    override func windowTitle(forDocumentDisplayName displayName: String) -> String {
+        guard let url = (document as? NSDocument)?.fileURL, let archive = ArchiveBrowser.archive(of: url) else { return displayName }
+        return "\(displayName) — \(archive.lastPathComponent)"
     }
 
     // MARK: Folder navigation
@@ -372,7 +382,7 @@ final class ViewerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     @objc func showInFinder(_ sender: Any?) {
         guard let url = (document as? NSDocument)?.fileURL else { NSSound.beep(); return }
-        NSWorkspace.shared.activateFileViewerSelecting([url])
+        NSWorkspace.shared.activateFileViewerSelecting([ArchiveBrowser.archive(of: url) ?? url])   // never the unpacked copy
     }
 
     /// File ▸ Export as PDF…: a PDF copy (a picture becomes a page at its print size, every page of a TIFF a page).
@@ -381,7 +391,7 @@ final class ViewerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
         panel.nameFieldStringValue = (doc.fileURL?.deletingPathExtension().lastPathComponent ?? doc.displayName ?? "Untitled") + ".pdf"
-        panel.directoryURL = doc.fileURL?.deletingLastPathComponent()
+        panel.directoryURL = doc.fileURL.map(ArchiveBrowser.saveFolder(for:))
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
             MainActor.assumeIsolated { self?.export(doc, to: url, type: UTType.pdf.identifier) }
@@ -405,7 +415,7 @@ final class ViewerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     @objc func moveToTrash(_ sender: Any?) {
-        guard let doc = document as? NSDocument, let url = doc.fileURL else { NSSound.beep(); return }
+        guard let doc = document as? NSDocument, let url = doc.fileURL, !ArchiveBrowser.isUnpacked(url) else { NSSound.beep(); return }
         let files = browseList(for: url)
         let next = FolderNavigator.neighbor(of: url, in: files, offset: 1) ?? FolderNavigator.neighbor(of: url, in: files, offset: -1)
         do {
@@ -493,7 +503,11 @@ final class ViewerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
-        case #selector(nextFile(_:)), #selector(previousFile(_:)), #selector(moveToTrash(_:)), #selector(showInFinder(_:)):
+        case #selector(moveToTrash(_:)):
+            // A file from an archive is a temporary copy; the archive itself is left alone.
+            guard let url = (document as? NSDocument)?.fileURL else { return false }
+            return !ArchiveBrowser.isUnpacked(url)
+        case #selector(nextFile(_:)), #selector(previousFile(_:)), #selector(showInFinder(_:)):
             return (document as? NSDocument)?.fileURL != nil
         case #selector(exportAsPDF(_:)):
             return (document as? ImageDocument)?.state != nil || (document as? PDFFileDocument)?.pdf.isLocked == false

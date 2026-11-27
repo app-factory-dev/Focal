@@ -30,6 +30,9 @@ address). `scripts/release.sh` makes the notarized DMG.
   rewrites them all. **3D files** (USD/USDZ, glTF, OBJ, STL, PLY, Alembic, MaterialX) open in SceneKit.
 - **A folder** dropped on the Dock icon or picked in Open browses its files in one window. BMP, GIF, TGA, SGI,
   icons and JPEG 2000 save in place; Export adds OpenEXR and PDF; File ▸ Export as PDF….
+- **Archives** (ZIP, 7z, RAR, tar/.tgz/.tbz/.txz, cpio, ISO, XAR, CAB) open from Open With like a folder: the
+  viewable files are unpacked flat into `$TMPDIR/FocalArchives/<uuid>/`, titled "file — archive.zip". View only:
+  those files are drafts, so Save is Save As (panel starts next to the archive); Move to Trash is off.
 - Browse without reopening: ⌘[ ⌘] (and ← → on images) step through the folder in place. **Several files opened
   together share one window with a thumbnail sidebar**; clicking or ↑↓ switches the viewer to that file's type.
   ⌥⌘S shows a single file's folder in the sidebar. While browsing, the window keeps its size (lightbox).
@@ -63,7 +66,7 @@ back and check its SHA-256 and `xcrun stapler validate`.
 | Folder (`Sources/FocalKit/`) | What lives there |
 |---|---|
 | `App/` | `FocalApp`/`AppDelegate`, `FocalDocumentController` (open, New Text File, New from Clipboard), `MainMenu` (Preview/QuickTime shortcuts), `UITestDriver` (DEBUG only) |
-| `Window/` | `ViewerWindowController` (one per file or set: placement, toolbar per content kind, ⌘[ ⌘] navigation, sidebar, Markup bar), `FileSidebar` (Quick Look thumbnails, virtualised table), `PageStrip` (page thumbnails for PDFs and multi-page images, page editing hooks, Go to Page), `WindowPlacement` (pure, unit-tested), `ViewerToolbar`, `FolderNavigator` (folder order, `browsable`, `folderToBrowse`, what counts as viewable) |
+| `Window/` | `ViewerWindowController` (one per file or set: placement, toolbar per content kind, ⌘[ ⌘] navigation, sidebar, Markup bar), `FileSidebar` (Quick Look thumbnails, virtualised table), `PageStrip` (page thumbnails for PDFs and multi-page images, page editing hooks, Go to Page), `WindowPlacement` (pure, unit-tested), `ViewerToolbar`, `FolderNavigator` (folder order, `browsable`, `folderToBrowse`, what counts as viewable), `ArchiveBrowser` (archive detection, bsdtar unpack, flatten, cleanup) |
 | `Image/` | `ImageDocument` (ImageIO probe then off-main decode; pages; edits as snapshot undo), `ImageViewController` + `+Pages`, `CanvasView` (tools, pan, context menu), `ZoomingScrollView`, `ImageExporter` (incl. multi-page and animated copies), `ImageFormats` (SGI encoder, XBM decoder) |
 | `PDF/` | `PDFFileDocument` (PDFKit; every change an undo step; encryption, redaction flattening, print), `PDFViewerController` + `+Markup` (overlay, tools, marks, text boxes, notes) + `+Pages` (page panel, Contents outline), `SignatureStore` (signing sheet, kept per build) |
 | `Model/` | `ModelLoader` (SceneKit, glTF via `/usr/bin/usdcat`, MaterialX on a sphere, scene stats), `ModelViewController` + `ModelDocument` |
@@ -132,6 +135,13 @@ matters**: Illustrator sits before "Image" (`.ai` conforms to `public.image` and
 - **Multi-page saving** copies untouched pages from the file (`CGImageDestinationAddImageFromSource`, metadata kept)
   and redraws only edited ones; undo first returns to the page it changes. Animations can't be edited, so a Save As
   of an animated GIF copies its frames.
+- **Archives match exact types, never conformance**: `.docx`, `.xlsx`, `.epub`, `.pages`, `.jar`, `.ipa` conform to
+  `public.zip-archive`, so conformance would put Focal in Word's Open With and "browse" its XML. Rank `Alternate`
+  (Archive Utility keeps the double-click; RAR, which nothing else on the Mac opens, defaults to Focal, and the user
+  wants it that way, 2026-11-27). `.gz`/`.bz2`/`.xz` are claimed only so `.tar.gz` works; a lone `.gz` isn't
+  browsed. Unpacked with `/usr/bin/tar` (lists first: over 4 GB or 10,000 entries is refused), always with a dummy
+  `--passphrase` and stdin from /dev/null: without them an encrypted ZIP made bsdtar prompt for a passphrase forever.
+  Shallow files are moved first so a top-level `notes.txt` keeps its name over `sub/notes.txt`.
 - **3D**: SceneKit "opens" a missing or broken file as an empty scene without error, so no geometry = an error
   message. glTF is converted with the system `usdcat` to `$TMPDIR/FocalModels/` (deleted on close and at quit).
   OpenVDB is not claimed (no public framework draws volumes). A stopped `NSProgressIndicator` stays drawn unless
